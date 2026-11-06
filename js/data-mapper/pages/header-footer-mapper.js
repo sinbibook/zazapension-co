@@ -73,22 +73,27 @@
   };
 
   // MAPPER: pages.index.sections[0].gallery.images[isSelected][0] → [data-header-logo]
-  // 원본 헤더가 이미지인 숙소(아그니초시매·에벤에셀펜션 등)만 크롤러가 이 칸을 채운다.
-  // A형은 index.gallery 를 안 써서 헤더 로고 칸으로 빌린다. 기본정보 로고는 텍스트 헤더 숙소에도
-  // 올라가 있어(2026-10 기준 8곳 중 6곳) 헤더 전환 기준으로 쓸 수 없다 — 파비콘·푸터 전용 그대로.
+  //         없으면 homepage.images[0].logo[isSelected].url
+  // 원본 헤더가 이미지인 숙소는 크롤러가 원래 색 로고(.logo2)를 gallery 칸에 넣는다. 이 칸을 먼저 읽는다.
+  // A형은 index.gallery 를 안 써서 헤더 로고 칸으로 빌린다.
+  // 로고 칸 파일은 대부분 흰색이라(원본 .logo) 흰 배경(.logo2)에서 안 보인다 → .is-basic-logo 로 어둡게 칠한다.
   // 로고 한 장을 두 자리에 쓴다: 투명 헤더(.logo)는 CSS 로 흰색 반전, 흰 배경(.logo2)은 원래 색 (E2 방식).
-  // 이미지가 없으면 .has-img 를 떼어 텍스트(숙소영문명) 그대로 둔다.
+  // 둘 다 없으면 .has-img 를 떼어 텍스트(숙소영문명) 그대로 둔다.
   HeaderFooterMapper.prototype.mapHeaderLogo = function () {
     var index = this.getPages().index;
     var section = (index && index.sections && index.sections[0]) || {};
     var logo = this.getSelectedImages((section.gallery || {}).images || [])[0];
-    var url = logo && logo.url;
+    var headerLogoUrl = logo && logo.url;
+    var url = headerLogoUrl || this.getLogo();
     var alt = this.getPropertyName();
 
     document.querySelectorAll('[data-header-logo]').forEach(function (link) {
       var slot = link.parentNode;
       link.innerHTML = '';
-      if (slot) slot.classList.toggle('has-img', !!url);
+      if (slot) {
+        slot.classList.toggle('has-img', !!url);
+        slot.classList.toggle('is-basic-logo', !!url && !headerLogoUrl);
+      }
       if (!url) return;
       var img = document.createElement('img');
       img.src = url;
@@ -139,10 +144,12 @@
   };
 
   // MAPPER: property.ybsId → [data-ybs-button] (없으면 숨김)
+  // 푸터 「야놀자 YBS」 + 헤더(스크롤 헤더) 버튼 + aside 하단 아이콘 (원본 gagopaps.kr 배치).
+  // 헤더·aside 는 [data-ybs-wrap] 째 숨기고, 값이 있으면 인라인 숨김만 풀어 CSS 가 노출을 정한다.
   HeaderFooterMapper.prototype.mapYbs = function () {
     var ybsId = this.getProperty().ybsId;
     document.querySelectorAll('[data-ybs-button]').forEach(function (el) {
-      var host = el.closest('.privacy') || el;
+      var host = el.closest('[data-ybs-wrap]') || el.closest('.privacy') || el;
       if (!ybsId) {
         host.style.display = 'none';
         return;
